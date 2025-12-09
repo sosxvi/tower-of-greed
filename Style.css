@@ -1,0 +1,29 @@
+/* Reset default styling */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Dark fantasy theme */
+body {
+    background-color: #1a0f0f;
+    color: #d4af37;
+    font-family: 'Courier New', monospace;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+h1 {
+    font-size: 48px;
+    text-align: center;
+    margin-bottom: 20px;
+    text-shadow: 0 0 10px #d4af37;
+    color: #ffd700;
+}
+
+p {
+    text-align: center;
+    font-size: 18px;
+    color: #b8860b;
+}
