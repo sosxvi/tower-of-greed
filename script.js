@@ -6,12 +6,13 @@ const ctx = canvas.getContext('2d');
 canvas.width = 600;
 canvas.height = 400;
 
-// Game variables
-let gold = 0;
+// Game variables - Load banked gold from localStorage!
+let unclaimedGold = 0;  
+let bankedGold = parseInt(localStorage.getItem('bankedGold')) || 0;  // Load saved gold OR start at 0
 let height = 0;
 let gameOver = false;
 
-// Camera offset (now tracks X and Y!)
+// Camera offset
 let cameraX = 0;
 let cameraY = 0;
 
@@ -30,10 +31,10 @@ const player = {
 const stairs = [];
 
 // Stair settings
-const STAIR_WIDTH = 80;   // Keep width good
-const STAIR_HEIGHT = 20;   // MUCH flatter - looks like a real step!
+const STAIR_WIDTH = 100;
+const STAIR_HEIGHT = 20;
 const STAIR_SPACING_Y = 70;
-const STAIR_SPACING_X = 100;  // Clear left/right positioning
+const STAIR_SPACING_X = 100;
 
 // Track keyboard
 const keysPressed = {};
@@ -46,12 +47,33 @@ document.addEventListener('keydown', (e) => {
         tryMoveForward();
     } else if (e.key === 'ArrowRight') {
         tryTurn();
+    } else if (e.key === 'c' || e.key === 'C') {
+        cashOut();
     }
 });
 
 document.addEventListener('keyup', (e) => {
     keysPressed[e.key] = false;
 });
+
+// CASH OUT - Bank your gold and RESTART!
+function cashOut() {
+    if (unclaimedGold > 0) {
+        // Add to banked gold
+        bankedGold += unclaimedGold;
+        
+        // SAVE to localStorage so it survives reload!
+        localStorage.setItem('bankedGold', bankedGold.toString());
+        
+        console.log(`💰 Cashed out! Total banked: ${bankedGold}`);
+        
+        let cashAmount = unclaimedGold;
+        alert(`💰 CASHED OUT!\n\nBanked: ${cashAmount} gold\nTotal Safe: ${bankedGold}\n\nStarting new run...`);
+        
+        // Reset game
+        location.reload();
+    }
+}
 
 // Create a stair
 function createStair(x, y, nextDirection) {
@@ -64,66 +86,54 @@ function createStair(x, y, nextDirection) {
     };
 }
 
-// Initialize stairs with winding path
+// Initialize stairs
 function initStairs() {
     let currentX = 300;
     let currentY = 350;
-    let currentDirection = 'right';  // Start going right
+    let currentDirection = 'right';
     let stepsInDirection = 0;
-    let maxStepsBeforeChange = 3 + Math.floor(Math.random() * 3);  // 3-5 steps
+    let maxStepsBeforeChange = 3 + Math.floor(Math.random() * 3);
     
-    // First stair
     stairs.push(createStair(currentX, currentY, currentDirection));
     currentY -= STAIR_SPACING_Y;
     
-    // Generate initial path
     for (let i = 0; i < 30; i++) {
         stepsInDirection++;
         
-        // Move in current direction
         if (currentDirection === 'right') {
             currentX += STAIR_SPACING_X;
         } else {
             currentX -= STAIR_SPACING_X;
         }
         
-        // Should we change direction?
         if (stepsInDirection >= maxStepsBeforeChange) {
-            // Switch direction
             currentDirection = currentDirection === 'right' ? 'left' : 'right';
             stepsInDirection = 0;
             maxStepsBeforeChange = 3 + Math.floor(Math.random() * 3);
         }
         
-        // Update previous stair's direction
         stairs[stairs.length - 1].nextDirection = currentDirection;
-        
-        // Create new stair
         stairs.push(createStair(currentX, currentY, currentDirection));
         currentY -= STAIR_SPACING_Y;
     }
 }
 
-// Generate new stairs at the top
+// Generate new stairs
 function generateNewStairs() {
     let highestStair = stairs[stairs.length - 1];
     let highestStairScreenY = highestStair.y - cameraY;
     
-    // Keep generating until we have enough stairs above
     while (highestStairScreenY > -300) {
         let lastStair = stairs[stairs.length - 1];
         let lastDirection = lastStair.nextDirection || 'right';
         
-        // Continue in same direction or randomly switch
         let nextDirection = lastDirection;
-        if (Math.random() < 0.25) {  // 25% chance to switch
+        if (Math.random() < 0.25) {
             nextDirection = nextDirection === 'right' ? 'left' : 'right';
         }
         
-        // Set CURRENT stair's direction BEFORE creating next one
         stairs[stairs.length - 1].nextDirection = nextDirection;
         
-        // Calculate new position based on the direction we just set
         let newX = lastStair.x;
         if (nextDirection === 'right') {
             newX += STAIR_SPACING_X;
@@ -132,15 +142,12 @@ function generateNewStairs() {
         }
         
         let newY = lastStair.y - STAIR_SPACING_Y;
-        
-        // Create new stair WITHOUT setting its nextDirection yet (will be set later)
         stairs.push(createStair(newX, newY, null));
         
         highestStair = stairs[stairs.length - 1];
         highestStairScreenY = highestStair.y - cameraY;
     }
     
-    // Remove old stairs below
     while (stairs.length > 0 && stairs[0].y - cameraY > canvas.height + 200) {
         stairs.shift();
         player.currentStairIndex--;
@@ -160,8 +167,6 @@ function tryMoveForward() {
     }
     
     let nextStair = stairs[nextStairIndex];
-    
-    // Check if next stair matches our direction
     let isNextStairRight = nextStair.x > currentStair.x;
     
     if (isNextStairRight === player.facingRight) {
@@ -184,11 +189,7 @@ function tryTurn() {
     }
     
     let nextStair = stairs[nextStairIndex];
-    
-    // Flip direction
     player.facingRight = !player.facingRight;
-    
-    // Check if matches
     let isNextStairRight = nextStair.x > currentStair.x;
     
     if (isNextStairRight === player.facingRight) {
@@ -210,7 +211,7 @@ function jumpToStair(stairIndex) {
     let targetY = targetStair.y - player.size;
     
     function animate() {
-        player.jumpProgress += 0.75; //Faster! (higher = faster jumps)
+        player.jumpProgress += 0.25;
         
         if (player.jumpProgress >= 1) {
             player.x = targetX;
@@ -219,9 +220,8 @@ function jumpToStair(stairIndex) {
             player.isJumping = false;
             
             height += 1;
-            gold += 1;
+            unclaimedGold += 1;  // Earn risky gold!
             
-            // Update camera to follow player (both X and Y!)
             cameraX = player.x - canvas.width / 2 + player.size / 2;
             cameraY = player.y - canvas.height / 2;
             
@@ -239,17 +239,26 @@ function jumpToStair(stairIndex) {
     animate();
 }
 
-// Die
+// Die - LOSE UNCLAIMED, KEEP BANKED!
 function die() {
     gameOver = true;
-    gold = 0;
-    alert(`You fell! Height reached: ${height}`);
+    
+    // Save banked gold before reload
+    localStorage.setItem('bankedGold', bankedGold.toString());
+    
+    let message = `💀 YOU FELL! 💀\n\n`;
+    message += `Height Reached: ${height}\n`;
+    message += `❌ Lost Unclaimed Gold: ${unclaimedGold}\n`;
+    message += `✅ Banked Gold Kept: ${bankedGold}\n\n`;
+    message += `Total Banked: ${bankedGold}`;
+    
+    alert(message);
     location.reload();
 }
 
-// Update stats
+// Update stats display
 function updateStats() {
-    document.getElementById('gold').textContent = gold;
+    document.getElementById('gold').textContent = `💰 ${unclaimedGold} | 🏦 ${bankedGold}`;
     document.getElementById('height').textContent = height;
 }
 
@@ -258,15 +267,12 @@ function drawStair(stair) {
     let screenX = stair.x - cameraX;
     let screenY = stair.y - cameraY;
     
-    // Stair top
     ctx.fillStyle = '#8B4513';
     ctx.fillRect(screenX, screenY, stair.width, 10);
     
-    // Stair front
     ctx.fillStyle = '#654321';
     ctx.fillRect(screenX, screenY + 10, stair.width, stair.height - 10);
     
-    // Border
     ctx.strokeStyle = '#d4af37';
     ctx.lineWidth = 2;
     ctx.strokeRect(screenX, screenY, stair.width, stair.height);
@@ -277,11 +283,9 @@ function drawPlayer() {
     let screenX = player.x - cameraX;
     let screenY = player.y - cameraY;
     
-    // Player body
     ctx.fillStyle = '#ffd700';
     ctx.fillRect(screenX, screenY, player.size, player.size);
     
-    // Direction indicator
     ctx.fillStyle = '#000';
     ctx.font = '16px Arial';
     let arrow = player.facingRight ? '▶' : '◀';
@@ -313,15 +317,14 @@ function gameLoop() {
 initStairs();
 updateStats();
 
-// Position player on first stair
 let firstStair = stairs[0];
 player.x = firstStair.x + (STAIR_WIDTH / 2) - (player.size / 2);
 player.y = firstStair.y - player.size;
 
-// Set initial camera
 cameraX = player.x - canvas.width / 2 + player.size / 2;
 cameraY = player.y - canvas.height / 2;
 
 gameLoop();
 
-console.log("Tower of Greed - Winding path active!");
+console.log("Tower of Greed - Risk/Reward Active!");
+console.log("SPACE = climb | RIGHT ARROW = turn | C = CASH OUT!");
