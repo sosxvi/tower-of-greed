@@ -1,3 +1,182 @@
+// ===== KEYBIND SYSTEM =====
+// Default keys
+const DEFAULT_KEYS = {
+    climb: ' ',  // Space bar
+    turn: 'ArrowRight',
+    cashout: 'c'
+};
+
+// Load saved keybinds from localStorage or use defaults
+let keybinds = {
+    climb: localStorage.getItem('key_climb') || DEFAULT_KEYS.climb,
+    turn: localStorage.getItem('key_turn') || DEFAULT_KEYS.turn,
+    cashout: localStorage.getItem('key_cashout') || DEFAULT_KEYS.cashout
+};
+
+// Save a keybind to localStorage
+function saveKeybind(action, key) {
+    localStorage.setItem(`key_${action}`, key);
+    keybinds[action] = key;
+    updateControlDisplay();
+}
+
+// Update the control display text
+function updateControlDisplay() {
+    const displayText = `${formatKeyName(keybinds.climb)} = climb | ${formatKeyName(keybinds.turn)} = turn | ${formatKeyName(keybinds.cashout)} = CASH OUT`;
+    document.getElementById('control-display').textContent = displayText;
+}
+
+// Format key names to be more readable
+function formatKeyName(key) {
+    if (key === ' ') return 'SPACE';
+    if (key.startsWith('Arrow')) return key.replace('Arrow', '').toUpperCase();
+    return key.toUpperCase();
+}
+
+// ===== SETTINGS MODAL SYSTEM =====
+const settingsModal = document.getElementById('settings-modal');
+const settingsBtn = document.getElementById('settings-btn');
+const closeSettingsBtn = document.getElementById('close-settings-btn');
+const resetKeysBtn = document.getElementById('reset-keys-btn');
+
+// Keybind buttons
+const climbKeyBtn = document.getElementById('climb-key-btn');
+const turnKeyBtn = document.getElementById('turn-key-btn');
+const cashoutKeyBtn = document.getElementById('cashout-key-btn');
+
+// Track if we're currently listening for a key press
+let listeningForKey = null;  // Will be 'climb', 'turn', or 'cashout' when listening
+
+// Open settings modal
+function openSettings() {
+    settingsModal.classList.add('show');
+    gameOver = true;  // Pause game while in settings
+    updateKeybindButtons();  // Update button displays
+}
+
+// Close settings modal
+function closeSettings() {
+    settingsModal.classList.remove('show');
+    gameOver = false;  // Resume game
+    listeningForKey = null;  // Stop listening for keys
+}
+
+// Update the keybind button displays
+function updateKeybindButtons() {
+    climbKeyBtn.textContent = formatKeyName(keybinds.climb);
+    turnKeyBtn.textContent = formatKeyName(keybinds.turn);
+    cashoutKeyBtn.textContent = formatKeyName(keybinds.cashout);
+}
+
+// Start listening for a key press
+function startListening(action, button) {
+    // Stop any previous listening
+    if (listeningForKey) {
+        const prevButton = document.getElementById(`${listeningForKey}-key-btn`);
+        prevButton.classList.remove('listening');
+    }
+    
+    listeningForKey = action;
+    button.classList.add('listening');
+    button.textContent = 'Press any key...';
+}
+
+// Reset all keys to defaults
+function resetKeys() {
+    keybinds.climb = DEFAULT_KEYS.climb;
+    keybinds.turn = DEFAULT_KEYS.turn;
+    keybinds.cashout = DEFAULT_KEYS.cashout;
+    
+    // Save to localStorage
+    localStorage.setItem('key_climb', DEFAULT_KEYS.climb);
+    localStorage.setItem('key_turn', DEFAULT_KEYS.turn);
+    localStorage.setItem('key_cashout', DEFAULT_KEYS.cashout);
+    
+    updateKeybindButtons();
+    updateControlDisplay();
+    
+    alert('Keys reset to defaults!');
+}
+
+// ===== UNIFIED KEY HANDLER =====
+// Handles BOTH settings and game controls
+document.addEventListener('keydown', (e) => {
+    // PRIORITY 1: Settings Modal is Open
+    if (settingsModal.classList.contains('show')) {
+        // ESC closes settings
+        if (e.key === 'Escape') {
+            closeSettings();
+            return;
+        }
+        
+        // If we're listening for a key to rebind
+        if (listeningForKey) {
+            e.preventDefault();  // Prevent default browser behavior
+            
+            // Don't allow ESC as a keybind
+            if (e.key === 'Escape') {
+                alert('Cannot bind Escape key!');
+                return;
+            }
+            
+            // Save the new keybind
+            saveKeybind(listeningForKey, e.key);
+            
+            // Update button display
+            const button = document.getElementById(`${listeningForKey}-key-btn`);
+            button.classList.remove('listening');
+            button.textContent = formatKeyName(e.key);
+            
+            listeningForKey = null;
+            return;
+        }
+        
+        // Don't process game controls while in settings
+        return;
+    }
+    
+    // PRIORITY 2: Game is Playing (not in settings)
+    
+    // ESC opens settings during gameplay
+    if (e.key === 'Escape') {
+        openSettings();
+        return;
+    }
+    
+    // Prevent duplicate key presses
+    if (keysPressed[e.key] || gameOver) return;
+    keysPressed[e.key] = true;
+    
+    // Check against custom keybinds
+    if (e.key === keybinds.climb) {
+        tryMoveForward();
+    } else if (e.key === keybinds.turn) {
+        tryTurn();
+    } else if (e.key.toLowerCase() === keybinds.cashout.toLowerCase()) {
+        cashOut();
+    }
+});
+
+// Key release handler
+document.addEventListener('keyup', (e) => {
+    keysPressed[e.key] = false;
+});
+
+// Event listeners for settings
+settingsBtn.addEventListener('click', openSettings);
+closeSettingsBtn.addEventListener('click', closeSettings);
+resetKeysBtn.addEventListener('click', resetKeys);
+
+// Keybind button listeners
+climbKeyBtn.addEventListener('click', () => startListening('climb', climbKeyBtn));
+turnKeyBtn.addEventListener('click', () => startListening('turn', turnKeyBtn));
+cashoutKeyBtn.addEventListener('click', () => startListening('cashout', cashoutKeyBtn));
+
+
+
+// Initialize - update displays on page load
+updateControlDisplay();
+updateKeybindButtons();
 // Get the canvas and its drawing context
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -39,22 +218,9 @@ const STAIR_SPACING_X = 100;
 // Track keyboard
 const keysPressed = {};
 
-document.addEventListener('keydown', (e) => {
-    if (keysPressed[e.key] || gameOver) return;
-    keysPressed[e.key] = true;
-    
-    if (e.key === ' ') {
-        tryMoveForward();
-    } else if (e.key === 'ArrowRight') {
-        tryTurn();
-    } else if (e.key === 'c' || e.key === 'C') {
-        cashOut();
-    }
-});
 
-document.addEventListener('keyup', (e) => {
-    keysPressed[e.key] = false;
-});
+
+
 
 // CASH OUT - Bank your gold and RESTART!
 function cashOut() {

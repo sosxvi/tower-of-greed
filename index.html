@@ -19,11 +19,43 @@
         <!-- The Canvas - Our Game Drawing Area -->
         <canvas id="gameCanvas"></canvas>
         
-        <!-- Instructions -->
-        <div class="instructions">
-            <p>SPACE = climb | RIGHT ARROW = turn | C = CASH OUT</p>
+<!-- Instructions -->
+<div class="instructions">
+    <p id="control-display">SPACE = climb | RIGHT ARROW = turn | C = CASH OUT</p>
+    <button id="settings-btn" class="settings-button">⚙️ Settings (ESC)</button>
+</div>
+
+<!-- Settings Modal (Hidden by default) -->
+<div id="settings-modal" class="modal">
+    <div class="modal-content">
+        <h2>⚙️ Settings</h2>
+        
+        <div class="setting-group">
+            <h3>Key Bindings</h3>
+            
+            <div class="keybind-row">
+                <span class="keybind-label">Climb Key:</span>
+                <button id="climb-key-btn" class="keybind-button">SPACE</button>
+            </div>
+            
+            <div class="keybind-row">
+                <span class="keybind-label">Turn Key:</span>
+                <button id="turn-key-btn" class="keybind-button">ArrowRight</button>
+            </div>
+            
+            <div class="keybind-row">
+                <span class="keybind-label">Cash Out Key:</span>
+                <button id="cashout-key-btn" class="keybind-button">C</button>
+            </div>
         </div>
+        
+        <div class="setting-group">
+            <button id="reset-keys-btn" class="reset-button">Reset to Defaults</button>
+        </div>
+        
+        <button id="close-settings-btn" class="close-button">Close (ESC)</button>
     </div>
+</div>
     
     <script src="script.js"></script>
 </body>
