@@ -7,8 +7,23 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Tower of Greed</h1>
-    <p>Your climbing adventure starts here!</p>
+    <div class="game-container">
+        <h1>Tower of Greed</h1>
+        
+        <!-- Game Stats -->
+        <div class="stats">
+            <div class="stat">Gold: <span id="gold">0</span></div>
+            <div class="stat">Height: <span id="height">0</span></div>
+        </div>
+        
+        <!-- The Canvas - Our Game Drawing Area -->
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- Instructions -->
+        <div class="instructions">
+            <p>Press SPACE to move forward | Press LEFT/RIGHT arrows to turn</p>
+        </div>
+    </div>
     
     <script src="script.js"></script>
 </body>
